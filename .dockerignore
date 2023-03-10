@@ -1,0 +1,9 @@
+# .dockerignore
+
+.vscode
+
+.git
+.gitattributes
+
+
+Dockerfile
