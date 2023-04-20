@@ -96,18 +96,25 @@ type ComplexityRoot struct {
 		UpdatedAt   func(childComplexity int) int
 	}
 
+	PostCat struct {
+		Categories func(childComplexity int) int
+		Post       func(childComplexity int) int
+	}
+
 	Query struct {
-		GetCategories      func(childComplexity int) int
-		GetImage           func(childComplexity int, id int64) int
-		GetPost            func(childComplexity int, id int64) int
-		GetPostBySlug      func(childComplexity int, slug string) int
-		GetPostCount       func(childComplexity int, cat *string) int
-		GetPosts           func(childComplexity int, limit int, offset int, orderBy *string) int
-		GetPostsByCategory func(childComplexity int, limit int, offset int, orderBy *string, cat string) int
-		GetUser            func(childComplexity int, id int64) int
-		GetUsers           func(childComplexity int) int
-		Login              func(childComplexity int, emailOrUsername string, password string) int
-		Logout             func(childComplexity int, emailOrUsername string, password string) int
+		GetCategories        func(childComplexity int) int
+		GetImage             func(childComplexity int, id int64) int
+		GetPost              func(childComplexity int, id int64) int
+		GetPostBySlug        func(childComplexity int, slug string) int
+		GetPostCount         func(childComplexity int, cat *string) int
+		GetPostWithCatBySlug func(childComplexity int, slug string) int
+		GetPosts             func(childComplexity int, limit int, offset int, orderBy *string) int
+		GetPostsByCategory   func(childComplexity int, limit int, offset int, orderBy *string, cat string) int
+		GetPostsWithCategory func(childComplexity int, limit int, offset int, orderBy *string) int
+		GetUser              func(childComplexity int, id int64) int
+		GetUsers             func(childComplexity int) int
+		Login                func(childComplexity int, emailOrUsername string, password string) int
+		Logout               func(childComplexity int, emailOrUsername string, password string) int
 	}
 
 	User struct {
@@ -133,9 +140,11 @@ type QueryResolver interface {
 	GetUsers(ctx context.Context) ([]*db.User, error)
 	GetUser(ctx context.Context, id int64) (*db.User, error)
 	GetPosts(ctx context.Context, limit int, offset int, orderBy *string) ([]*db.Post, error)
+	GetPostsWithCategory(ctx context.Context, limit int, offset int, orderBy *string) ([]*db.PostCat, error)
 	GetPostsByCategory(ctx context.Context, limit int, offset int, orderBy *string, cat string) ([]*db.Post, error)
 	GetPost(ctx context.Context, id int64) (*db.Post, error)
 	GetPostBySlug(ctx context.Context, slug string) (*db.Post, error)
+	GetPostWithCatBySlug(ctx context.Context, slug string) (*db.PostCat, error)
 	GetPostCount(ctx context.Context, cat *string) (int, error)
 	GetImage(ctx context.Context, id int64) (*db.Image, error)
 	GetCategories(ctx context.Context) ([]*db.Category, error)
@@ -381,6 +390,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Post.UpdatedAt(childComplexity), true
 
+	case "PostCat.categories":
+		if e.complexity.PostCat.Categories == nil {
+			break
+		}
+
+		return e.complexity.PostCat.Categories(childComplexity), true
+
+	case "PostCat.post":
+		if e.complexity.PostCat.Post == nil {
+			break
+		}
+
+		return e.complexity.PostCat.Post(childComplexity), true
+
 	case "Query.getCategories":
 		if e.complexity.Query.GetCategories == nil {
 			break
@@ -436,6 +459,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Query.GetPostCount(childComplexity, args["cat"].(*string)), true
 
+	case "Query.getPostWithCatBySlug":
+		if e.complexity.Query.GetPostWithCatBySlug == nil {
+			break
+		}
+
+		args, err := ec.field_Query_getPostWithCatBySlug_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.GetPostWithCatBySlug(childComplexity, args["slug"].(string)), true
+
 	case "Query.getPosts":
 		if e.complexity.Query.GetPosts == nil {
 			break
@@ -459,6 +494,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Query.GetPostsByCategory(childComplexity, args["limit"].(int), args["offset"].(int), args["orderBy"].(*string), args["cat"].(string)), true
+
+	case "Query.getPostsWithCategory":
+		if e.complexity.Query.GetPostsWithCategory == nil {
+			break
+		}
+
+		args, err := ec.field_Query_getPostsWithCategory_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.GetPostsWithCategory(childComplexity, args["limit"].(int), args["offset"].(int), args["orderBy"].(*string)), true
 
 	case "Query.getUser":
 		if e.complexity.Query.GetUser == nil {
@@ -629,6 +676,7 @@ type Query {
   getUser(id: ID!): User
 
   getPosts(limit: Int!, offset: Int!, orderBy: String): [Post!]!
+  getPostsWithCategory(limit: Int!, offset: Int!, orderBy: String): [PostCat!]!
   getPostsByCategory(
     limit: Int!
     offset: Int!
@@ -637,6 +685,7 @@ type Query {
   ): [Post!]!
   getPost(id: ID!): Post
   getPostBySlug(slug: String!): Post
+  getPostWithCatBySlug(slug: String!): PostCat
   getPostCount(cat: String): Int!
 
   getImage(id: ID!): Image
@@ -701,6 +750,10 @@ type Post {
   post_author: User!
   created_at: Time!
   updated_at: Time!
+}
+type PostCat {
+  post: Post!
+  categories: [Category!]
 }
 type Category {
   ID: Int!
@@ -900,6 +953,21 @@ func (ec *executionContext) field_Query_getPostCount_args(ctx context.Context, r
 	return args, nil
 }
 
+func (ec *executionContext) field_Query_getPostWithCatBySlug_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["slug"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("slug"))
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["slug"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Query_getPost_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
@@ -954,6 +1022,39 @@ func (ec *executionContext) field_Query_getPostsByCategory_args(ctx context.Cont
 		}
 	}
 	args["cat"] = arg3
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_getPostsWithCategory_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 int
+	if tmp, ok := rawArgs["limit"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("limit"))
+		arg0, err = ec.unmarshalNInt2int(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["limit"] = arg0
+	var arg1 int
+	if tmp, ok := rawArgs["offset"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("offset"))
+		arg1, err = ec.unmarshalNInt2int(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["offset"] = arg1
+	var arg2 *string
+	if tmp, ok := rawArgs["orderBy"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("orderBy"))
+		arg2, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["orderBy"] = arg2
 	return args, nil
 }
 
@@ -2472,6 +2573,123 @@ func (ec *executionContext) fieldContext_Post_updated_at(ctx context.Context, fi
 	return fc, nil
 }
 
+func (ec *executionContext) _PostCat_post(ctx context.Context, field graphql.CollectedField, obj *db.PostCat) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PostCat_post(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Post, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(db.Post)
+	fc.Result = res
+	return ec.marshalNPost2githubᚗcomᚋmosiur404ᚋgoserverᚋdbᚐPost(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PostCat_post(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PostCat",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "ID":
+				return ec.fieldContext_Post_ID(ctx, field)
+			case "post_title":
+				return ec.fieldContext_Post_post_title(ctx, field)
+			case "post_slug":
+				return ec.fieldContext_Post_post_slug(ctx, field)
+			case "post_content":
+				return ec.fieldContext_Post_post_content(ctx, field)
+			case "post_image":
+				return ec.fieldContext_Post_post_image(ctx, field)
+			case "post_author":
+				return ec.fieldContext_Post_post_author(ctx, field)
+			case "created_at":
+				return ec.fieldContext_Post_created_at(ctx, field)
+			case "updated_at":
+				return ec.fieldContext_Post_updated_at(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Post", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PostCat_categories(ctx context.Context, field graphql.CollectedField, obj *db.PostCat) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PostCat_categories(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Categories, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]db.Category)
+	fc.Result = res
+	return ec.marshalOCategory2ᚕgithubᚗcomᚋmosiur404ᚋgoserverᚋdbᚐCategoryᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PostCat_categories(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PostCat",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "ID":
+				return ec.fieldContext_Category_ID(ctx, field)
+			case "category_title":
+				return ec.fieldContext_Category_category_title(ctx, field)
+			case "category_slug":
+				return ec.fieldContext_Category_category_slug(ctx, field)
+			case "description":
+				return ec.fieldContext_Category_description(ctx, field)
+			case "created_at":
+				return ec.fieldContext_Category_created_at(ctx, field)
+			case "updated_at":
+				return ec.fieldContext_Category_updated_at(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Category", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query_getUsers(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Query_getUsers(ctx, field)
 	if err != nil {
@@ -2664,6 +2882,67 @@ func (ec *executionContext) fieldContext_Query_getPosts(ctx context.Context, fie
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Query_getPosts_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_getPostsWithCategory(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_getPostsWithCategory(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().GetPostsWithCategory(rctx, fc.Args["limit"].(int), fc.Args["offset"].(int), fc.Args["orderBy"].(*string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*db.PostCat)
+	fc.Result = res
+	return ec.marshalNPostCat2ᚕᚖgithubᚗcomᚋmosiur404ᚋgoserverᚋdbᚐPostCatᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_getPostsWithCategory(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "post":
+				return ec.fieldContext_PostCat_post(ctx, field)
+			case "categories":
+				return ec.fieldContext_PostCat_categories(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type PostCat", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_getPostsWithCategory_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return
 	}
@@ -2877,6 +3156,64 @@ func (ec *executionContext) fieldContext_Query_getPostBySlug(ctx context.Context
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Query_getPostBySlug_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_getPostWithCatBySlug(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_getPostWithCatBySlug(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().GetPostWithCatBySlug(rctx, fc.Args["slug"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*db.PostCat)
+	fc.Result = res
+	return ec.marshalOPostCat2ᚖgithubᚗcomᚋmosiur404ᚋgoserverᚋdbᚐPostCat(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_getPostWithCatBySlug(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "post":
+				return ec.fieldContext_PostCat_post(ctx, field)
+			case "categories":
+				return ec.fieldContext_PostCat_categories(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type PostCat", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_getPostWithCatBySlug_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return
 	}
@@ -5763,6 +6100,38 @@ func (ec *executionContext) _Post(ctx context.Context, sel ast.SelectionSet, obj
 	return out
 }
 
+var postCatImplementors = []string{"PostCat"}
+
+func (ec *executionContext) _PostCat(ctx context.Context, sel ast.SelectionSet, obj *db.PostCat) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, postCatImplementors)
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("PostCat")
+		case "post":
+
+			out.Values[i] = ec._PostCat_post(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "categories":
+
+			out.Values[i] = ec._PostCat_categories(ctx, field, obj)
+
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
 var queryImplementors = []string{"Query"}
 
 func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) graphql.Marshaler {
@@ -5845,6 +6214,29 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			out.Concurrently(i, func() graphql.Marshaler {
 				return rrm(innerCtx)
 			})
+		case "getPostsWithCategory":
+			field := field
+
+			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_getPostsWithCategory(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx, innerFunc)
+			}
+
+			out.Concurrently(i, func() graphql.Marshaler {
+				return rrm(innerCtx)
+			})
 		case "getPostsByCategory":
 			field := field
 
@@ -5898,6 +6290,26 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_getPostBySlug(ctx, field)
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx, innerFunc)
+			}
+
+			out.Concurrently(i, func() graphql.Marshaler {
+				return rrm(innerCtx)
+			})
+		case "getPostWithCatBySlug":
+			field := field
+
+			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_getPostWithCatBySlug(ctx, field)
 				return res
 			}
 
@@ -6444,6 +6856,10 @@ func (ec *executionContext) marshalNBoolean2bool(ctx context.Context, sel ast.Se
 	return res
 }
 
+func (ec *executionContext) marshalNCategory2githubᚗcomᚋmosiur404ᚋgoserverᚋdbᚐCategory(ctx context.Context, sel ast.SelectionSet, v db.Category) graphql.Marshaler {
+	return ec._Category(ctx, sel, &v)
+}
+
 func (ec *executionContext) marshalNCategory2ᚖgithubᚗcomᚋmosiur404ᚋgoserverᚋdbᚐCategory(ctx context.Context, sel ast.SelectionSet, v *db.Category) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -6528,6 +6944,10 @@ func (ec *executionContext) marshalNMutationResponse2ᚖgithubᚗcomᚋmosiur404
 	return ec._MutationResponse(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNPost2githubᚗcomᚋmosiur404ᚋgoserverᚋdbᚐPost(ctx context.Context, sel ast.SelectionSet, v db.Post) graphql.Marshaler {
+	return ec._Post(ctx, sel, &v)
+}
+
 func (ec *executionContext) marshalNPost2ᚕᚖgithubᚗcomᚋmosiur404ᚋgoserverᚋdbᚐPostᚄ(ctx context.Context, sel ast.SelectionSet, v []*db.Post) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
@@ -6580,6 +7000,60 @@ func (ec *executionContext) marshalNPost2ᚖgithubᚗcomᚋmosiur404ᚋgoserver�
 		return graphql.Null
 	}
 	return ec._Post(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNPostCat2ᚕᚖgithubᚗcomᚋmosiur404ᚋgoserverᚋdbᚐPostCatᚄ(ctx context.Context, sel ast.SelectionSet, v []*db.PostCat) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNPostCat2ᚖgithubᚗcomᚋmosiur404ᚋgoserverᚋdbᚐPostCat(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNPostCat2ᚖgithubᚗcomᚋmosiur404ᚋgoserverᚋdbᚐPostCat(ctx context.Context, sel ast.SelectionSet, v *db.PostCat) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._PostCat(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNString2string(ctx context.Context, v interface{}) (string, error) {
@@ -6905,6 +7379,53 @@ func (ec *executionContext) marshalOBoolean2ᚖbool(ctx context.Context, sel ast
 	return res
 }
 
+func (ec *executionContext) marshalOCategory2ᚕgithubᚗcomᚋmosiur404ᚋgoserverᚋdbᚐCategoryᚄ(ctx context.Context, sel ast.SelectionSet, v []db.Category) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNCategory2githubᚗcomᚋmosiur404ᚋgoserverᚋdbᚐCategory(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
 func (ec *executionContext) marshalOCategory2ᚕᚖgithubᚗcomᚋmosiur404ᚋgoserverᚋdbᚐCategoryᚄ(ctx context.Context, sel ast.SelectionSet, v []*db.Category) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
@@ -6971,6 +7492,13 @@ func (ec *executionContext) marshalOPost2ᚖgithubᚗcomᚋmosiur404ᚋgoserver�
 		return graphql.Null
 	}
 	return ec._Post(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalOPostCat2ᚖgithubᚗcomᚋmosiur404ᚋgoserverᚋdbᚐPostCat(ctx context.Context, sel ast.SelectionSet, v *db.PostCat) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._PostCat(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalOString2string(ctx context.Context, v interface{}) (string, error) {

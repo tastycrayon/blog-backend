@@ -8,6 +8,7 @@ type Query {
   getUser(id: ID!): User
 
   getPosts(limit: Int!, offset: Int!, orderBy: String): [Post!]!
+  getPostsWithCategory(limit: Int!, offset: Int!, orderBy: String): [PostCat!]!
   getPostsByCategory(
     limit: Int!
     offset: Int!
@@ -16,6 +17,7 @@ type Query {
   ): [Post!]!
   getPost(id: ID!): Post
   getPostBySlug(slug: String!): Post
+  getPostWithCatBySlug(slug: String!): PostCat
   getPostCount(cat: String): Int!
 
   getImage(id: ID!): Image
@@ -80,6 +82,10 @@ type Post {
   post_author: User!
   created_at: Time!
   updated_at: Time!
+}
+type PostCat {
+  post: Post!
+  categories: [Category!]
 }
 type Category {
   ID: Int!

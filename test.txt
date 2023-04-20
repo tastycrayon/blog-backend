@@ -1,0 +1,132 @@
+const typeDefs = `
+# GraphQL schema
+
+#
+# Queries
+#
+type Query {
+  getUsers: [User]
+  getUser(id: ID!): User
+
+  getPosts(
+    limit: Int!
+    offset: Int!
+    orderBy: String
+    order: String
+    category: String
+  ): [Post]
+  getPost(id: ID!): Post
+  getPostBySlug(slug: ID!): Post
+  getPostCount(cat: String): Int!
+
+  getImage(id: ID!): Image
+
+  getCategories: [Category]
+
+  login(email: String, password: String!): String
+}
+
+#
+# Mutations
+#
+
+type Mutation {
+  addImage(
+    image_title: String
+    image_url: String!
+    thumbnail_url: String
+    height: Int!
+    width: Int!
+  ): AddImageResponse
+
+  addPost(
+    post_slug: String!
+    post_title: String!
+    post_content: String
+    authorid: ID!
+    imageId: ID!
+  ): AddPostResponse
+}
+
+#
+# Response Messages
+#
+
+type AddPostResponse {
+  code: Int!
+  "Indicates whether the mutation was successful"
+  success: Boolean!
+  "Human-readable message for the UI"
+  message: String!
+  "Newly updated track after a successful mutation"
+  post: Post
+}
+
+type AddImageResponse {
+  code: Int!
+  "Indicates whether the mutation was successful"
+  success: Boolean!
+  "Human-readable message for the UI"
+  message: String!
+  "Newly updated track after a successful mutation"
+  image: Image
+}
+
+#
+# Types
+#
+
+scalar Date
+
+type Post {
+  ID: Int!
+  post_title: String!
+  post_slug: String!
+  post_content: String!
+  post_image: Image
+  post_author: User!
+  created_at: String!
+  updated_at: String!
+}
+type Category {
+  ID: Int!
+  category_title: String!
+  category_slug: String!
+  description: String
+  created_at: String!
+  updated_at: String!
+}
+type User {
+  ID: Int!
+  user_name: String!
+  user_email: String!
+  user_pass: String!
+  user_activation_key: String
+  user_role: Boolean!
+  display_name: String
+  user_image: Image
+  created_at: String!
+  updated_at: String!
+}
+type Image {
+  ID: Int!
+  image_title: String!
+  image_url: String!
+  thumbnail_url: String
+  height: Int!
+  width: Int!
+  created_at: String!
+  updated_at: String!
+}
+
+`;
+//Set-Item -Path env:test -Value "Someval"
+// database: blog
+// username: e8z43r9bt4xbq0qxxts7
+// host: ap-south.connect.psdb.cloud
+// password: pscale_pw_lTfWYEw8vJc7zsDD5ZEzlOjZ20aX4DCMV5tmQTbnc5f
+// go run ariga.io/entimport/cmd/entimport -dialect mysql -dsn 'mysql://e8z43r9bt4xbq0qxxts7:pscale_pw_lTfWYEw8vJc7zsDD5ZEzlOjZ20aX4DCMV5tmQTbnc5f@ap-south.connect.psdb.cloud/blog?ssl={"rejectUnauthorized":true}'
+// go run -mod=mod github.com/99designs/gqlgen generate
+// nodemon --exec go run main.go -e go --signal SIGTERM
+// nodemon --exec "go clean --cache && go run main.go" --signal SIGTERM
+// .\sqlc.exe generate

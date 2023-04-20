@@ -68,6 +68,8 @@ models:
         resolver: true
       Image:
         resolver: true
+      Category:
+        resolver: true
   User:
     model: github.com/mosiur404/goserver/db.User
     fields:
@@ -77,3 +79,5 @@ models:
     model: github.com/mosiur404/goserver/db.Image
   Category:
     model: github.com/mosiur404/goserver/db.Category
+  PostCat:
+    model: github.com/mosiur404/goserver/db.PostCat

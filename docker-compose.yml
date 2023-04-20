@@ -3,18 +3,20 @@ version: '3.8'
 
 services:
 
-  webservice:
-    container_name: go_app
-    depends_on:
-      - db # must start database first
-    build: .
-    env_file:
-      - dev.env
-    ports:
-      - ${GO_LOCAL_PORT}:${GO_DOCKER_PORT}
-    volumes:
-      - .:/usr/src/app
-    command: air cmd/main.go -b 0.0.0.0
+  # webservice:
+  #   container_name: go_app
+  #   depends_on:
+  #     - db # must start database first
+  #   build:
+  #     dockerfile: Dockerfile
+  #     context: ./
+  #   env_file:
+  #     - dev.env
+  #   ports:
+  #     - ${GO_LOCAL_PORT}:${GO_DOCKER_PORT}
+  #   volumes:
+  #     - .:/usr/src/app
+  #   command: air cmd/main.go -b 0.0.0.0
 
   db:
     container_name: db_mysql
