@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/playground"
@@ -30,7 +31,7 @@ func main() {
 	// Start GraphQL
 	router := chi.NewRouter()
 	router.Use(cors.Handler(cors.Options{
-		AllowedOrigins:   []string{config.AllowedServer},
+		AllowedOrigins:   strings.Split(config.AllowedServer, "|"),
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
 		ExposedHeaders:   []string{"Link"},
@@ -58,7 +59,10 @@ func main() {
 	dataloaderSrv := storage.Middleware(loader, srv)
 
 	router.Handle("/query", dataloaderSrv)
-	router.Handle("/", playground.Handler("GraphQL playground", "/query"))
+	// playground only available on developement mode
+	if config.Environment != util.PRODUCTION {
+		router.Handle("/", playground.Handler("GraphQL playground", "/query"))
+	}
 
 	log.Printf("🚀 Server ready at: http://localhost:%s", config.HTTPServerPort)
 	log.Fatal(http.ListenAndServe(":"+config.HTTPServerPort, router))

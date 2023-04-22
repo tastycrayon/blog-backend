@@ -45,14 +45,15 @@ func (store *Store) execTx(ctx context.Context, fn func(*Queries) error) error {
 }
 
 func InitDB(config util.Config) *sql.DB {
-	var dsn string = fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?parseTime=true&multiStatements=true",
+	var args string = "?parseTime=true&multiStatements=true&tls=preferred"
+	var dsn string = fmt.Sprintf("%s:%s@tcp(%s:%s)/%s",
 		config.DBUser,
 		config.DBPassword,
 		config.DBHost,
 		config.DBDockerPort,
 		config.DBName,
 	)
-	db, err := sql.Open("mysql", dsn)
+	db, err := sql.Open("mysql", dsn+args)
 
 	if err != nil {
 		log.Fatalf("❗failed to connect: %v", err)
