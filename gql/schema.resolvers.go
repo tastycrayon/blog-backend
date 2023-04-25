@@ -225,7 +225,7 @@ func (r *queryResolver) GetPostWithCatBySlug(ctx context.Context, slug string) (
 
 // GetPostCount is the resolver for the getPostCount field.
 func (r *queryResolver) GetPostCount(ctx context.Context, cat *string) (int, error) {
-	count, err := r.Db.Queries.GetPostCount(ctx)
+	count, err := r.Db.Queries.GetPostCount(ctx, cat)
 	if err != nil {
 		return 0, gqlerror.Errorf("Failed at resolver %v", err)
 	}

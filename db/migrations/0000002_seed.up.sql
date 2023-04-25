@@ -76,3 +76,7 @@ VALUES (
         '1260',
         '750'
     );
+--
+-- name: SeedPostCat :exec
+--
+INSERT INTO `post_category` (post_id, category_id) values ('1', '1');

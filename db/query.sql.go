@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"database/sql"
 
 	"github.com/mosiur404/goserver/util"
 )
@@ -196,7 +197,8 @@ func (q *Queries) GetPosts(ctx context.Context, arg *GetPostsParams) ([]Post, er
 	return items, nil
 }
 
-const getPostsWithCategory = `SELECT posts.*, categories.* FROM posts 
+const getPostsWithCategory = `-- name: GetPostsWithCategory :many 
+SELECT posts.*, categories.* FROM posts 
 JOIN post_category ON posts.id = post_category.post_id
 JOIN categories ON post_category.category_id = categories.id LIMIT ? OFFSET ?;
 `
@@ -287,9 +289,19 @@ func (q *Queries) GetPost(ctx context.Context, id int64) (Post, error) {
 const getPostCount = `-- name: GetPostCount :exec
 SELECT COUNT(*) FROM posts;
 `
+const getPostCountWithCat = `-- name: GetPostCount :exec
+SELECT COUNT(*) FROM post_category pc
+inner join categories c on c.ID=pc.category_id
+WHERE c.category_slug = ?;
+`
 
-func (q *Queries) GetPostCount(ctx context.Context) (int, error) {
-	row := q.db.QueryRowContext(ctx, getPostCount)
+func (q *Queries) GetPostCount(ctx context.Context, cat *string) (int, error) {
+	var row *sql.Row
+	if cat == nil {
+		row = q.db.QueryRowContext(ctx, getPostCount)
+	} else {
+		row = q.db.QueryRowContext(ctx, getPostCountWithCat, cat)
+	}
 	var count int
 	err := row.Scan(&count)
 	return count, err
