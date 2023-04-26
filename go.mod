@@ -1,4 +1,4 @@
-module github.com/mosiur404/goserver
+module github.com/tastycrayon/blog-backend
 
 go 1.20
 
