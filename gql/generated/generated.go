@@ -14,8 +14,8 @@ import (
 
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/99designs/gqlgen/graphql/introspection"
-	"github.com/mosiur404/goserver/db"
-	"github.com/mosiur404/goserver/gql/model"
+	"github.com/tastycrayon/blog-backend/db"
+	"github.com/tastycrayon/blog-backend/gql/model"
 	gqlparser "github.com/vektah/gqlparser/v2"
 	"github.com/vektah/gqlparser/v2/ast"
 )

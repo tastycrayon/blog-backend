@@ -13,12 +13,12 @@ import (
 	"log"
 	"strconv"
 
-	"github.com/mosiur404/goserver/db"
-	"github.com/mosiur404/goserver/gql/generated"
-	"github.com/mosiur404/goserver/gql/model"
-	"github.com/mosiur404/goserver/middleware"
-	"github.com/mosiur404/goserver/storage"
-	"github.com/mosiur404/goserver/util"
+	"github.com/tastycrayon/blog-backend/db"
+	"github.com/tastycrayon/blog-backend/gql/generated"
+	"github.com/tastycrayon/blog-backend/gql/model"
+	"github.com/tastycrayon/blog-backend/middleware"
+	"github.com/tastycrayon/blog-backend/storage"
+	"github.com/tastycrayon/blog-backend/util"
 	"github.com/vektah/gqlparser/v2/gqlerror"
 )
 

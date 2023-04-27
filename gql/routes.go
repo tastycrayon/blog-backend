@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/mosiur404/goserver/middleware"
+	"github.com/tastycrayon/blog-backend/middleware"
 )
 
 func RefreshTokenRoute(w http.ResponseWriter, r *http.Request) {

@@ -2,68 +2,57 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"net/http"
-	"strings"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
-	"github.com/99designs/gqlgen/graphql/handler"
-	"github.com/99designs/gqlgen/graphql/playground"
-	"github.com/go-chi/chi"
-	"github.com/go-chi/cors"
 	_ "github.com/go-sql-driver/mysql"
-	"github.com/mosiur404/goserver/db"
-	"github.com/mosiur404/goserver/gql"
-	"github.com/mosiur404/goserver/gql/generated"
-	"github.com/mosiur404/goserver/middleware"
-	"github.com/mosiur404/goserver/storage"
-	"github.com/mosiur404/goserver/util"
+	"github.com/tastycrayon/blog-backend/util"
 )
 
 func main() {
 	config, err := util.LoadConfig(".")
 	if err != nil {
-		panic("❗could not load .env file")
+		log.Fatalf("❗could not load .env file")
 	}
-
-	dataBase := *db.NewStore(db.InitDB(config))
-
-	// Start GraphQL
-	router := chi.NewRouter()
-	router.Use(cors.Handler(cors.Options{
-		AllowedOrigins:   strings.Split(config.AllowedServer, "|"),
-		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
-		ExposedHeaders:   []string{"Link"},
-		AllowCredentials: true,
-		MaxAge:           300, // Maximum value not ignored by any of major browsers
-	}))
-
-	router.Use(middleware.AuthMiddleware(dataBase)) // access token
-	router.Post("/refresh", gql.RefreshTokenRoute)  // refresh token
-
-	c := generated.Config{Resolvers: &gql.Resolver{
-		Db: dataBase,
-	}}
-
-	// make a data loader
-	loader := storage.NewDataLoader(dataBase)
-	// create the query handler
-	srv := handler.NewDefaultServer(generated.NewExecutableSchema(c))
-
-	// whenever a panic happens, gracefully return a message to the user before stopping parsing
-	srv.SetRecoverFunc(func(ctx context.Context, err interface{}) error {
-		return util.GqlError(ctx, fmt.Sprintf("SetRecoverFunc: %v", err), util.InternalServerError)
-	})
-	// wrap the query handler with middleware to inject dataloader
-	dataloaderSrv := storage.Middleware(loader, srv)
-
-	router.Handle("/query", dataloaderSrv)
-	// playground only available on developement mode
-	if config.Environment != util.PRODUCTION {
-		router.Handle("/", playground.Handler("GraphQL playground", "/query"))
+	// The HTTP Server
+	idleConnClosed := make(chan struct{})
+	var router http.Handler
+	router, err = Service(config)
+	if err != nil {
+		log.Fatalf("error: %v", err)
 	}
+	srv := &http.Server{Addr: "0.0.0.0:" + config.HTTPServerPort, Handler: router}
 
+	go GracefullyShutdown(srv, idleConnClosed)
+
+	//Run the server
 	log.Printf("🚀 Server ready at: http://localhost:%s", config.HTTPServerPort)
-	log.Fatal(http.ListenAndServe(":"+config.HTTPServerPort, router))
+	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		log.Fatalf("failed to start server %v", err)
+	}
+
+	<-idleConnClosed
+	log.Println("Service Stop ✌")
+}
+
+func GracefullyShutdown(srv *http.Server, idleConnClosed chan struct{}) {
+	sig := make(chan os.Signal, 1)
+	defer close(sig)
+	// Listen for syscall signals for process to interrupt/quit
+	signal.Notify(sig, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
+	<-sig
+
+	log.Println("interrupt received: server shutting down 🤷")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	if err := srv.Shutdown(ctx); err != nil {
+		log.Printf("http server shoutdown error %v", err)
+	}
+	log.Println("Shutdown Gracefully 🥁")
+	close(idleConnClosed)
 }

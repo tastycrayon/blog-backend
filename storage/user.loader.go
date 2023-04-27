@@ -7,8 +7,8 @@ import (
 	"strconv"
 
 	"github.com/graph-gophers/dataloader"
-	"github.com/mosiur404/goserver/db"
-	"github.com/mosiur404/goserver/util"
+	"github.com/tastycrayon/blog-backend/db"
+	"github.com/tastycrayon/blog-backend/util"
 )
 
 // GetUser wraps the User dataloader for efficient retrieval by user ID

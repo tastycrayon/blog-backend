@@ -4,7 +4,7 @@ import (
 	"context"
 	"database/sql"
 
-	"github.com/mosiur404/goserver/util"
+	"github.com/tastycrayon/blog-backend/util"
 )
 
 const getPostsByCategoy = `-- name: GetPostsByCategoy :many

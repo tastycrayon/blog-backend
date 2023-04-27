@@ -1,7 +1,6 @@
 package db
 
 import (
-	"context"
 	"database/sql"
 	"fmt"
 	"log"
@@ -11,7 +10,7 @@ import (
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/mysql"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
-	"github.com/mosiur404/goserver/util"
+	"github.com/tastycrayon/blog-backend/util"
 )
 
 // store provides all db functions
@@ -28,23 +27,23 @@ func NewStore(db *sql.DB) *Store {
 	}
 }
 
-func (store *Store) execTx(ctx context.Context, fn func(*Queries) error) error {
-	tx, err := store.db.BeginTx(ctx, nil)
-	if err != nil {
-		return err
-	}
-	q := New(tx)
-	err = fn(q)
-	if err != nil {
-		if rbErr := tx.Rollback(); rbErr != nil {
-			return fmt.Errorf("tx Err: %v, Rb Err: %v", err, rbErr)
-		}
-		return err
-	}
-	return tx.Commit()
-}
+// func (store *Store) execTx(ctx context.Context, fn func(*Queries) error) error {
+// 	tx, err := store.db.BeginTx(ctx, nil)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	q := New(tx)
+// 	err = fn(q)
+// 	if err != nil {
+// 		if rbErr := tx.Rollback(); rbErr != nil {
+// 			return fmt.Errorf("tx Err: %v, Rb Err: %v", err, rbErr)
+// 		}
+// 		return err
+// 	}
+// 	return tx.Commit()
+// }
 
-func InitDB(config util.Config) *sql.DB {
+func InitDB(config util.Config) (*sql.DB, error) {
 	var args string = "?parseTime=true&multiStatements=true&tls=preferred"
 	var dsn string = fmt.Sprintf("%s:%s@tcp(%s:%s)/%s",
 		config.DBUser,
@@ -56,7 +55,8 @@ func InitDB(config util.Config) *sql.DB {
 	db, err := sql.Open("mysql", dsn+args)
 
 	if err != nil {
-		log.Fatalf("❗failed to connect: %v", err)
+		log.Printf("❗failed to connect: %v", err)
+		return nil, err
 	}
 	// connection setting
 	// Maximum Idle Connections
@@ -72,12 +72,21 @@ func InitDB(config util.Config) *sql.DB {
 	runMigrationOnDB(config, db)
 	// migrate start
 	if err := db.Ping(); err != nil {
-		log.Fatalf("❗ failed to ping: %v", err)
+		log.Printf("❗ failed to ping: %v", err)
+		return nil, err
 	}
-	log.Println("🤟 Successfully connected to MySQL!")
+
+	var version string
+	err = db.QueryRow("SELECT VERSION()").Scan(&version)
+	if err != nil {
+		log.Print(err)
+		return nil, err
+	}
+
+	log.Printf("🤟 Successfully connected to MySQL %v!\n", version)
 	// defer db.Close() // will close in query
 
-	return db
+	return db, nil
 }
 
 func runMigrationOnDB(config util.Config, db *sql.DB) {

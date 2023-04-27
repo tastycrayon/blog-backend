@@ -5,7 +5,7 @@ import (
 	"net/http"
 
 	"github.com/graph-gophers/dataloader"
-	"github.com/mosiur404/goserver/db"
+	"github.com/tastycrayon/blog-backend/db"
 )
 
 type ctxKey string

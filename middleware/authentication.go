@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v4"
-	"github.com/mosiur404/goserver/db"
+	"github.com/tastycrayon/blog-backend/db"
 )
 
 type contextKey struct {
