@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"strings"
 
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/playground"
@@ -27,8 +26,13 @@ func Service(config util.Config) (http.Handler, error) {
 	}
 	var dataBase db.Store = *db.NewStore(conn)
 	// Start GraphQL
+	OriginFunc := func(r *http.Request, origin string) bool {
+		return origin == r.Header.Get("Origin")
+		// return true
+	}
 	router.Use(cors.Handler(cors.Options{
-		AllowedOrigins:   strings.Split(config.AllowedServer, "|"),
+		// AllowedOrigins:   strings.Split(config.AllowedServer, "|"),
+		AllowOriginFunc:  OriginFunc,
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
 		ExposedHeaders:   []string{"Link"},
