@@ -43,7 +43,7 @@ func handleUpload(c echo.Context) error {
 
 	// Destination
 	backupPath := "pb_data/backups"
-	if err := os.MkdirAll(backupPath, 0777); err != nil {
+	if err := os.MkdirAll(backupPath, 0644); err != nil {
 		return err
 	}
 	dst, err := os.Create(filepath.Join(backupPath, file.Filename))
