@@ -6,7 +6,6 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"time"
 
 	"net/http"
 
@@ -16,17 +15,7 @@ import (
 	"github.com/pocketbase/pocketbase/core"
 )
 
-func healthCheck(appUrl string) {
-	resp, err := http.Get(appUrl + "/api/health")
-	if resp.StatusCode == http.StatusOK && err == nil {
-		return
-	}
-	fmt.Println(resp, err, resp.StatusCode)
-}
-
 func main() {
-	backendURL := os.Getenv("bakckend_url")
-
 	app := pocketbase.New()
 
 	app.OnBeforeServe().Add(func(e *core.ServeEvent) error {
@@ -35,25 +24,6 @@ func main() {
 			apis.ActivityLogger(app))
 		return nil
 	})
-
-	// scheduler start
-	if backendURL == "" {
-		backendURL = app.Settings().Meta.AppUrl
-	}
-	ticker := time.NewTicker(14 * time.Minute)
-	quit := make(chan struct{})
-	go func() {
-		for {
-			select {
-			case <-ticker.C:
-				healthCheck(backendURL)
-			case <-quit:
-				ticker.Stop()
-				return
-			}
-		}
-	}()
-	// scheduler end
 
 	if err := app.Start(); err != nil {
 		log.Fatal(err)
