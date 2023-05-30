@@ -15,10 +15,13 @@ import (
 	"github.com/pocketbase/pocketbase/core"
 )
 
+var backupPath string
+
 func main() {
 	app := pocketbase.New()
 
 	app.OnBeforeServe().Add(func(e *core.ServeEvent) error {
+		backupPath = filepath.Join(app.RootCmd.Flag("dir").Value.String(), "backups")
 		e.Router.POST("/upload", handleUpload,
 			apis.RequireAdminAuth(),
 			apis.ActivityLogger(app))
@@ -42,8 +45,7 @@ func handleUpload(c echo.Context) error {
 	defer src.Close()
 
 	// Destination
-	backupPath := "pb_data/backups"
-	if err := os.MkdirAll(backupPath, 0644); err != nil {
+	if err := os.MkdirAll(backupPath, 0777); err != nil {
 		return err
 	}
 	dst, err := os.Create(filepath.Join(backupPath, file.Filename))
