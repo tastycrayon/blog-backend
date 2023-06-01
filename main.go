@@ -43,20 +43,19 @@ func handleUpload(c echo.Context) error {
 		return err
 	}
 	defer src.Close()
-
 	// Destination
 	if err := os.MkdirAll(backupPath, 0777); err != nil {
-		return err
+		return apis.NewApiError(400, "failed upload", err)
 	}
 	dst, err := os.Create(filepath.Join(backupPath, file.Filename))
 	if err != nil {
-		return err
+		return apis.NewApiError(400, "failed upload", err)
 	}
 	defer dst.Close()
 
 	// Copy
 	if _, err = io.Copy(dst, src); err != nil {
-		return err
+		return apis.NewApiError(400, "failed upload", err)
 	}
 
 	return c.HTML(http.StatusOK, fmt.Sprintf("<p>File %s uploaded successfully with fields.</p>", file.Filename))
